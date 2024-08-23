@@ -353,32 +353,26 @@ You can see the real life example, where this node is used, in the next tutorial
 
 ## delay (deprecated)
 
-
-<table  style="width:250px;">
-   <thead>
-     <tr>
-	 <td style="text-align: center"><strong><em>Since TB Version 2.1</em></strong></td>
-     </tr>
-   </thead>
-</table> 
-
 Delays incoming messages for a configurable period. In other words, node receives a message, holds it for a set duration, and then sends it to the next rule nodes for further action.
 
 **Configuration**
 
 ![Configuration example image](/images/user-guide/rule-engine-2-0/nodes/action-delay-config.png)
 
-- **Period value**: number that tells the node how long to delay. For example, if you put 5 here, it means you want the node to wait for 5 units of time.
-- **Period time unit**: time unit you're using for the delaying period. Available values are: seconds, minutes, hours. So, when paired with the **Period value**, if you chose 5 for **Period Value** and seconds for **Period time unit**, the node would wait for 5 seconds.
-- **Maximum pending messages**: limit on how many messages the node can delay at once. For example, If you set a number like 1000, it means the node can delay up to 1000 messages at a time. Once this limit is reached, any new incoming messages will be routed via **Failure** connection type until there's space available.
+* **Period value** - number that tells the node how long to delay. For example, if you put 5 here, it means you want the node to wait for 5 units of time.
+* **Period time unit** - time unit you're using for the delaying period. Available values are: seconds, minutes, hours. So, when paired with the **Period value**, if you chose 5 for **Period Value** and seconds for **Period time unit**, the node would wait for 5 seconds.
+* **Maximum pending messages** - limit on how many messages the node can delay at once. For example, If you set a number like 1000, it means the node can delay up to 1000 messages at a time. Once this limit is reached, any new incoming messages will be routed via **Failure** connection type until there's space available.
 
-> **Note**: **Period value** and **Period time unit** fields support templatization.
+> **Note:** **Period value** and **Period time unit** fields support templatization.
 
-**Output**
-- **Success**: If message was delayed successfully.
-- **Failure**: If maximum pending messages is reached or unexpected error happened during messages processing.
+**Output connections**
+* **Success:**
+  * If message was delayed successfully.
+* **Failure:** 
+  * If maximum pending messages is reached.
+  * If unexpected error happened during messages processing.
 
-> **Note**: Incoming messages are not modified during processing.
+> **Note:** Incoming messages are not modified during processing.
 
 **Usage example: waiting for external long-running tasks**
 
@@ -398,11 +392,7 @@ By using the delay node in this manner, we handle scenarios where immediate proc
 
 Because this node temporarily stores delayed messages in memory (thus, while message is in processing it is not persistent), they may be lost if ThingsBoard is restarted or node configuration is changed: these actions trigger node initialization during which old node state (which holds currently delayed messages) is cleared and new empty one is created.
 
-**Notes**
-
-Usage with sequential processing strategy: please, be aware that this node acknowledges incoming message, which will trigger processing of the next message in the queue.
-
-<br>
+> **Note:** If a sequential processing strategy is used, please, be aware that this node acknowledges incoming message, which will trigger processing of the next message in the queue.
 
 ## Generator Node
 
@@ -581,20 +571,22 @@ For more details how RPC works in the Thingsboard, please read [RPC capabilities
 
 <br>
 
-## Save Attributes Node
+## save attributes {#save-attributes-node}
 
-<table  style="width:250px;">
-   <thead>
-     <tr>
-	 <td style="text-align: center"><strong><em>Since TB Version 2.0</em></strong></td>
-     </tr>
-   </thead>
-</table> 
+Stores message originator attributes from the incoming message based on configurable scope parameter.
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-save-attributes.png)
+**Configuration: general**
 
-Stores attributes from incoming Message payload to the database and associate them to the Entity, that is identified by the Message Originator. 
-Configured **scope** is used to identify attributes scope.
+* **Attributes scope** - scope of the attributes where the attributes should be saved. Can be **_Client attributes_**, **_Server attributes_** or **_Shared attributes_**.
+* **Attributes scope value** - value of the attributes scope that can be used in the message metadata to specify scope.
+> **Note:** Use the 'scope' metadata key to dynamically set the attribute scope per message. You can copy value of **Attributes scope value** by simply clicking on the icon and use it as a value for key 'scope'. If provided, this overrides the scope set in the configuration.
+
+**Configuration: advanced settings**
+
+* **Save attributes only if the value changes** - if enabled, the rule node will remove current relations from the incoming message originator based on direction and type.
+* **Send attributes updated notification** - if enabled, the rule node will change the message originator to related entity. Useful when you need to process submitted message as a message from target entity.
+
+![Configuration example image](/images/user-guide/rule-engine-2-0/nodes/action-save-attributes-node-configuration.png)
 
 Supported scope types:
 
@@ -719,174 +711,224 @@ If specified message field does not exist in the **data** of the message or is n
 
 <br>
 
-## Assign To Customer Node 
+## assign to customer {#assign-to-customer-node}
 
-<table  style="width:250px;">
-   <thead>
-     <tr>
-	 <td style="text-align: center"><strong><em>Since TB Version 2.2</em></strong></td>
-     </tr>
-   </thead>
-</table> 
+Identifies target customer by title and assigns message originator entity to this [customer](/docs/{{docsPrefix}}user-guide/ui/customers/).
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-assign-to-customer-node.png)
+> **Note:** Following message originator's entity types are supported: **Asset**, **Device**, **Entity View**, **Dashboard**, **Edge**.
 
-Assign Message Originator Entity to [Customer](/docs/{{docsPrefix}}user-guide/ui/customers/). 
+**Configuration**
 
-Following Message Originator types are allowed: **Asset**, **Device**, **Entity View**, **Dashboard**.
+* **Customer title** - title to identify the target customer.
+  > **Note:** Customer title field supports [templatization](/docs/{{docsPrefix}}user-guide/templatization/).
+* **Create new customer if not exists** - if enabled, the rule node will create a new customer and assign message originator entity to it.
 
-Finds target Customer by customer name pattern and then assign Originator Entity to this customer.
+![Configuration example image](/images/user-guide/rule-engine-2-0/nodes/action-assign-to-customer-node-configuration.png)
 
-Will create new Customer if it doesn't exists and **Create new Customer if not exists** is set to **true**.
+**Output connections**
+* **Success:**
+  * If message originator entity was successfully assigned to a customer.
+* **Failure:**
+  * If message originator's entity type is unsupported.
+  * If **Create new customer if not exists** is disabled and a customer by title does not exist.
+  * If unexpected error occurs during message processing.
 
-Configuration:
+**Usage example**
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-assign-to-customer-node-configuration.png)
+Consider a smart building management system where various devices like thermostats, smoke detectors, and door sensors belong to different departments (customers) within a large office building.
 
-- **Customer name pattern** - can be set direct customer name or pattern can be used, that will be resolved to the real customer name using Message metadata.
-- **Create new customer if not exists** - if checked will create new customer if it doesn't exist.
-- **Customers cache expiration time** - specifies maximum time interval is seconds allowed to store found customers records. 0 value means that records will never expire.
+For this case, we will use the configuration provided earlier.
 
-Message will be routed via **Failure** chain in the following cases:
+We have a device, "SmokeDetector_101", that reports smoke level data. The device is located in a newly established department, "Marketing", which currently has no registered customer in the system.
 
-- When Originator entity type is not supported.
-- Target customer doesn't exist and **Create customer if not exists** is unchecked.
+![Device before image](/images/user-guide/rule-engine-2-0/nodes/action-assign-to-customer-example-device-before.png)
 
-In other cases Message will be routed via **Success** chain. 
+The incoming message from the device "SmokeDetector_101" will be as follows:
 
-<br>
+```bash
+msg: {"smokeLevel": 0.04}, metadata: {"ts": "1616510426300", "departmentName": "Marketing"}
+```
 
-## Unassign From Customer Node
+Since **Create new customer if not exists** is enabled, the rule node will fetch the customer's title from the message metadata, create a new customer with title "Marketing" and assign "SmokeDetector_101" to it.
 
-<table  style="width:250px;">
-   <thead>
-     <tr>
-	 <td style="text-align: center"><strong><em>Since TB Version 2.2</em></strong></td>
-     </tr>
-   </thead>
-</table> 
+![Device after image](/images/user-guide/rule-engine-2-0/nodes/action-assign-to-customer-example-device-after.png)
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-unassign-from-customer-node.png)
+## unassign from customer {#unnassign-from-customer-node}
 
-Unassign Message Originator Entity from [Customer](/docs/{{docsPrefix}}user-guide/ui/customers/). 
+Identifies target customer by title and unassigns message originator entity from this [customer](/docs/{{docsPrefix}}user-guide/ui/customers/).
 
-Following Message Originator types are allowed: **Asset**, **Device**, **Entity View**, **Dashboard**.
+> **Note:** Following message originator's entity types are supported: **Asset**, **Device**, **Entity View**, **Dashboard**, **Edge**.
 
-Finds target Customer by customer name pattern and then unassign Originator Entity from this customer.
+**Configuration**
 
-Configuration:
+* **Unassign from specific customer if originator is dashboard** - if enabled and message originator is a **Dashboard**, the rule node will unassign message originator entity from a particular customer.
+  > **Note:** The configuration to specify particular customer appears only if **Unassign from specific customer if originator is dashboard** is enabled.
+  * **Customer title** - title to identify the target customer.
+    > **Note:** Customer title field supports [templatization](/docs/{{docsPrefix}}user-guide/templatization/).
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-unassign-from-customer-node-configuration.png)
+![Configuration example image](/images/user-guide/rule-engine-2-0/nodes/action-unassign-from-customer-node-configuration.png)
 
-- **Customer name pattern** - can be set direct customer name or pattern can be used, that will be resolved to the real customer name using Message metadata.
-- **Customers cache expiration time** - specifies maximum time interval is seconds allowed to store found customers records. 0 value means that records will never expire.
+**Output connections**
+* **Success:**
+  * If message originator entity was successfully unassigned from a customer.
+  * If message originator entity was not assigned to any customer.
+* **Failure:**
+  * If message originator's entity type is unsupported.
+  * If message originator is a **Dashboard** and **Customer title** is not specified.
+  * If message originator is a **Dashboard** and customer by title does not exist.
+  * If unexpected error occurs during message processing.
 
-Message will be routed via **Failure** chain in the following cases:
+**Usage example**
 
-- When Originator entity type is not supported.
-- Target customer doesn't exist.
+Consider a central monitoring system where a single dashboard is used to provide a unified view of various metrics across multiple departments in a large company. 
+This common dashboard is used by different departments for general monitoring but needs to be restricted for specific departments.
 
-In other cases Message will be routed via **Success** chain. 
+For this case, we will use the configuration provided earlier.
 
-<br>
+We have a dashboard, "KPIs_Dashboard_Main", which displays key performance indicators (KPIs) such as system uptime, error rates, and network traffic. 
+This dashboard is shared among several departments, including "Finance", "IT", and "HR".
 
-## Create Relation Node 
+![Dashboard before image](/images/user-guide/rule-engine-2-0/nodes/action-unassign-from-customer-example-dashboard-before.png)
 
-<table  style="min-width:12%; max-width: 20%">
-   <thead>
-     <tr>
-	 <td style="text-align: center"><strong><em>Since TB Version 2.2.1</em></strong></td>
-     </tr>
-   </thead>
-</table> 
+Now, we need to unassign the "KPIs_Dashboard_Main" from the "Finance" department as their monitoring needs have changed. 
+The dashboard should still be available to the "IT" and "HR" departments.
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-create-relation.png)
+The incoming message from the dashboard "KPIs_Dashboard_Main" will be as follows:
 
-Create the relation from the selected entity to originator of the message by type and direction. 
+```bash
+msg: {"uptime": 99.9, "errorRate": 0.02}, metadata: {"ts": "1616510426300", "departmentName": "Finance"}
+```
 
-Following Message Originator types are allowed: **Asset**, **Device**, **Entity View**, **Customer**, **Tenant**, **Dashboard**.
+Since **Unassign from specific customer if originator is dashboard** is enabled, the rule node will fetch the customer’s title from the message metadata, identify the "Finance" department and 
+then unassign "KPIs_Dashboard_Main" from the "Finance" department, ensuring that the dashboard is no longer accessible to the "Finance" team while remaining available to the "IT" and "HR" departments.
 
-Finds target Entity by metadata key patterns and then create a relation between Originator Entity and the target entity.
+![Dashboard after image](/images/user-guide/rule-engine-2-0/nodes/action-unassign-from-customer-example-dashboard-after.png)
 
-If selected entity type **Asset**, **Device** or **Customer**  rule node will create new Entity if it doesn’t exist and selected checkbox: **Create new Entity if not exists**.
+## create relation {#create-relation-node}
 
-**Note:** if selected entity type **Asset** or **Device** you need to set two patterns: 
+Finds target entity and creates a [relation](/docs/{{docsPrefix}}user-guide/entities-and-relations/#relations). with the incoming message originator based on the configured direction and type.
 
- - entity name pattern; 
- 
- - entity type pattern. 
+**Configuration: Relation parameters**
 
-Otherwise, only name pattern should be set.
+* **Direction** - direction of the relation. Either **_From originator to target entity_** or **_From target entity to originator_**.
+* **Relation type** - type of the relation. Default relation types are "Contains" and "Manages", but you may create relation of any type.
 
-Configuration:
+**Configuration: Target entity**
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-create-relation-node-configuration.png)
+* **Type** - entity type of target entity. For each entity type some specific configurable input fields can appear, when specific entity type is selected:
+  * **Asset** or **Device**:
+    * **Device/Asset name** - name of the target entity.
+    * **Profile name** - name of the target entity profile.
+    > **Note:** All input fields support [templatization](/docs/{{docsPrefix}}user-guide/templatization/).
+    * **Create new entity if it doesn't exist** - if enabled, a new entity with specified parameters will be created and used to create relation unless it already exists.
+  * **Customer**:
+    * **Customer title** - title of the target customer.
+      > **Note:** **Customer title** field supports [templatization](/docs/{{docsPrefix}}user-guide/templatization/).
+    * **Create new entity if it doesn't exist** - if enabled, a new customer with specified parameters will be created and used to create relation unless it already exists.
+  * **Tenant**: there is no configurable input field. The current tenant will be used as a target entity.
+  * **Entity View**, **User**, **Dashboard**, **Edge**:
+    * **Entity view name/User email/Dashboard title/Edge name** - respectively, name/email/title of the target entity.
 
-- **Direction** - following types are allowed: **From**, **To**.
-- **Relation type** - type of directed connections to message originator entity. Default types **Contains** and **Manages** can be selected from the drop-down list.
-- **Name pattern** and **Type pattern** - can be set direct entity name/type or pattern can be used, that will be resolved to the real entity name/type using Message metadata.
-- **Entities cache expiration time** - specifies maximum time interval is seconds allowed to store found target entity records. 0 value means that records will never expire.
+> **Note:** Following entity types are supported: **Tenant**, **Asset**, **Device**, **Customer**, **Entity View**, **Dashboard**, **Edge**, **User**.
 
-Message will be routed via **Failure** chain in the following cases:
+**Configuration: advanced settings**
 
-- When Originator entity type is not supported.
-- Target entity doesn't exist.
+* **Remove current relations** - if enabled, the rule node will remove current relations from the incoming message originator based on direction and type.
+* **Change originator to related entity** - if enabled, the rule node will change the message originator to related entity. Useful when you need to process submitted message as a message from target entity.
 
-In other cases Message will be routed via **Success** chain. 
+![Configuration example image](/images/user-guide/rule-engine-2-0/nodes/action-create-relation-node-configuration.png)
 
-**Note:** Since TB Version 2.3 the rule node has the ability to:
+> **Note:** Following message originator's entity types are supported: **Tenant**, **Asset**, **Device**, **Customer**, **Entity View**, **Dashboard**, **Edge**, **User**.
 
- - remove current relations from the originator of the incoming message based on direction and type: 
+**Output connections**
+* **Success:**
+  * If relation was successfully created.
+* **Failure:**
+  * If message originator is not supported.
+  * If **Create new entity if it doesn't exist** for supported this property entities is disabled and the target entity type does not exist.
+  * If unexpected error occurs during message processing.
 
-    ![image](/images/user-guide/rule-engine-2-0/nodes/action-create-relation-node-remove-relations.png)
+**Usage example**
 
- - change the originator of the incoming message to the selected entity and process outboud messages as messages from another entity: 
- 
-    ![image](/images/user-guide/rule-engine-2-0/nodes/action-create-relation-node-change-originator.png)
+Consider a smart farming system where different devices are deployed across several fields to monitor soil moisture, temperature, and other conditions. 
+Each device needs to be related to a specific field for accurate monitoring and reporting.
 
-<br>
+For this case, we will use the configuration provided earlier.
 
-## Delete Relation Node
+We have a device, "MoistureSensor_45", that monitors soil moisture levels in "Field_B". The system needs to establish a relationship between "MoistureSensor_45" and the asset representing "Field_B". 
+If "Field_B" does not already exist in the system, it should be created automatically.
 
-<table  style="min-width:12%; max-width: 20%">
-   <thead>
-     <tr>
-	 <td style="text-align: center"><strong><em>Since TB Version 2.2.1</em></strong></td>
-     </tr>
-   </thead>
-</table> 
+The incoming message from "MoistureSensor_45" will be as follows:
 
+```bash
+msg: {"moistureLevel": 35}, metadata: {"ts": "1616510426300", "fieldName": "Field_B", "fieldProfileName": "Field" }
+```
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-delete-relation.png)
+Since **Create new customer if it does not exist** is enabled, the rule node will fetch the asset's name and asset profile's name from the message metadata, create new asset with the name "Field_B" and asset profile with the name "Field".
 
-Delete the relation from the selected entity to originator of the message by type and direction.
+![Asset image](/images/user-guide/rule-engine-2-0/nodes/action-create-relation-example-asset.png)
 
-Following Message Originator types are allowed: **Asset**, **Device**, **Entity View**, **Customer**, **Tenant**, **Dashboard**.
+A relation of type "Monitors" also will be created and established from "MoistureSensor_45" to "Field_B".
 
-Finds target Entity by entity name pattern and then delete a relation between Originator Entity and this entity.
+![Relation image](/images/user-guide/rule-engine-2-0/nodes/action-create-relation-example-relation.png)
 
-Configuration:
+And also message originator will be changed to "Field_B" asset.
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-delete-relation-node-configuration.png)
+## delete relation {#delete-relation-node}
 
-- **Direction** - following types are allowed: **From**, **To**.
-- **Relation type** - type of directed connections to message originator entity. Default types **Contains** and **Manages** can be selected from the drop-down list.
-- **Name pattern** - can be set direct entity name or pattern can be used, that will be resolved to the real entity name using Message metadata.
-- **Entities cache expiration time** - specifies maximum time interval is seconds allowed to store found target entity records. 0 value means that records will never expire.
+Deletes the [relation](/docs/{{docsPrefix}}user-guide/entities-and-relations/#relations) from the selected entity to originator of the message by type and direction.
 
-Message will be routed via **Failure** chain in the following cases:
+**Configuration: Relation parameters**
 
-- When Originator entity type is not supported.
-- Target entity doesn't exist.
+* **Direction** - direction of the relation. Either **_From originator_** or **_To originator_**.
+* **Relation type** - type of the relation. Default relation types are "Contains" and "Manages", but you may create relation of any type.
 
-In other cases Message will be routed via **Success** chain. 
+**Configuration: other**
 
+* **Delete relation with specific entity** - if enabled, the rule node will delete relation with just one particular entity. Otherwise, the relation will be rem oved with all matching entities.
+  > **Note:** The configuration to specify particular entity appears only if **Delete relation with specific entity** is enabled.
+  * **Type** - entity type of target entity. For each entity type some specific configurable input fields can appear, when specific entity type is selected:
+  * **Asset**, **Device**, **Customer**, **Entity View**, **User**, **Dashboard**, **Edge**:
+    * **Device name/Asset name/Customer title/Entity view name/User email/Dashboard title/Edge name** - respectively, name/title/email of the target entity.
+      > **Note:** All input fields support [templatization](/docs/{{docsPrefix}}user-guide/templatization/).
+  * **Tenant**: there is no configurable input field. The current tenant will be used as a specific entity.
 
-**Note:** Since TB Version 2.3 the rule node has the ability to deletes relation from the originator of the incoming message to the specified entity or to the list of entities based on direction and type by disabling the following checkbox in the rule node configuration:
+> **Note:** Following entity types are supported: **Tenant**, **Asset**, **Device**, **Customer**, **Entity View**, **Dashboard**, **Edge**, **User**.
 
-![image](/images/user-guide/rule-engine-2-0/nodes/action-delete-relation-node-new-functionality.png)
+![Configuration example image](/images/user-guide/rule-engine-2-0/nodes/action-delete-relation-node-configuration.png)
 
-<br>
+> **Note:** Following message originator's entity types are supported: **Tenant**, **Asset**, **Device**, **Customer**, **Entity View**, **Dashboard**, **Edge**, **User**.
+
+**Output connections**
+* **Success:**
+  * If relation was successfully deleted.
+* **Failure:**
+  * If message originator is not supported.
+  * If **Delete relation with specific entity** is enabled and the target entity type does not exist.
+  * If unexpected error occurs during message processing.
+
+**Usage example**
+
+Consider a fleet management system where multiple vehicles (devices) are related to different departments (assets). 
+Over time, as the fleet or department structure changes, certain relationships may need to be removed.
+
+For this case, we will use the configuration provided earlier.
+
+We have a vehicle, "Truck_17", which was previously related to the "Logistics" department. 
+
+![Device before image](/images/user-guide/rule-engine-2-0/nodes/action-delete-relation-device-before.png)
+
+Now, this vehicle has been reassigned, and we need to delete the relation of type "Manages" between "Truck_17" and the "Logistics" department.
+
+The incoming message from the vehicle "Truck_17" will be as follows:
+
+```bash
+msg: {"speed": 70, "location": "52.5200N, 13.4050E"}, metadata: {"ts": "1616510426300", "departmentName": "Logistics"}
+```
+
+The rule node will fetch the asset's name from the message metadata and delete configured relation between device with the name "Truck_17" and asset with the name "Logistics".
+
+![Device after image](/images/user-guide/rule-engine-2-0/nodes/action-delete-relation-device-after.png)
 
 ## GPS Geofencing Events Node
 
@@ -962,3 +1004,43 @@ Minimal outside time defines whenever message originator is considered as out of
    - missing perimeter definition;     
 
 {% include templates/edge/edge-nodes.md %}
+
+## copy to view
+
+Copies attributes from the message originator to [entity view](/docs/{{docsPrefix}}user-guide/entity-views/) and changes message originator to related entity view.
+
+> **Note:** Supported message types: **_Post attributes_**, **_Attributes Updated_**, **_Attributes Deleted_**, **_Activity Event_**, **_Inactivity Event_**.
+
+**Output connections**
+* **Success:**
+  * If message originator entity's attributes was successfully copied to an entity view and message originator changed to the related entity view.
+* **Failure:**
+  * If message type is unsupported.
+  * If message metadata is empty.
+  * If unexpected error occurs during message processing.
+
+**Usage example**
+
+Consider a smart agricultural system where sensors in different fields monitor various attributes such as sensor status and operational parameters. 
+The system uses entity views to provide tailored access to specific attributes for different agricultural teams, ensuring that each team only sees the relevant information for their assigned fields.
+
+We have a device, "SoilSensor_202", that tracks attributes like `sensorStatus`, `lastCalibration` and `inactivityAlarmTime`.
+
+![Device image](/images/user-guide/rule-engine-2-0/nodes/action-copy-to-view-example-device.png)
+
+We also have an entity view, "FieldView_South", which is set up to provide access to these specific attributes to the "Irrigation" team, while excluding other irrelevant attributes like inactivityAlarmTime.
+
+![Entity view before image](/images/user-guide/rule-engine-2-0/nodes/action-copy-to-view-example-entity-view-before.png)
+
+The incoming message with the message type **_Attributes Updated_** from the device "SoilSensor_202" will be as follows:
+
+```bash
+msg: {"sensorStatus": "active", "lastCalibration": 1653020504700, "inactivityAlarmTime": 1723908190991}, metadata: {"ts": "1616510426300", "scope": "SERVER_SCOPE"}
+```
+
+The rule node will copy the updated attributes (sensorStatus and lastCalibration) from "SoilSensor_202" to the "FieldView_South" entity view 
+and will change message originator to the "FieldView_South" entity view.
+
+![Entity view after image](/images/user-guide/rule-engine-2-0/nodes/action-copy-to-view-example-entity-view-after.png)
+
+You can see usage example of this rule node in the rule chain [here](/docs/{{docsPrefix}}user-guide/entity-views/#attributes-view).
